@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Doom Lab — Полная версия</title>
+    <title>Doom Lab — Ultimate Edition</title>
     <style>
         body {
             margin: 0;
@@ -25,6 +25,7 @@
             height: 600px;
             max-width: 100%;
             max-height: 100%;
+            overflow: hidden;
         }
         
         #game-canvas {
@@ -48,6 +49,7 @@
             color: #fff;
             font-size: 16px;
             text-shadow: 2px 2px 0 #000;
+            z-index: 10;
         }
         
         #weapon {
@@ -56,9 +58,20 @@
             background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="180" viewBox="0 0 300 180"><path d="M150,180 L140,120 L160,120 Z" fill="%23333"/><rect x="130" y="80" width="40" height="40" fill="%23555"/><rect x="135" y="85" width="30" height="30" fill="%23777"/></svg>') no-repeat center bottom;
             image-rendering: pixelated;
             cursor: crosshair;
-            transition: transform 0.1s;
+            transform-origin: center bottom;
+            transition: transform 0.05s ease-out;
         }
         
+        .weapon-recoil {
+            animation: recoil 0.3s ease-out;
+        }
+        
+        @keyframes recoil {
+            0% { transform: translateY(0) rotate(0deg); }
+            20% { transform: translateY(15px) rotate(5deg); }
+            100% { transform: translateY(0) rotate(0deg); }
+        }
+
         #hud {
             display: flex;
             flex-direction: column;
@@ -137,7 +150,7 @@
             #instructions { font-size: 12px; padding: 8px; }
         }
 
-        #victory-screen, #game-over-screen {
+        #victory-screen, #game-over-screen, #settings-screen {
             display: none;
             position: absolute;
             top: 0;
@@ -163,7 +176,7 @@
             margin: 0 0 20px;
         }
 
-        #victory-screen button, #game-over-screen button {
+        #victory-screen button, #game-over-screen button, #settings-screen button {
             margin-top: 30px;
             padding: 15px 30px;
             font-size: 24px;
@@ -174,7 +187,7 @@
             margin: 10px;
         }
 
-        .records {
+        .records, .settings-panel {
             margin: 20px 0;
             font-size: 20px;
             max-width: 600px;
@@ -192,9 +205,8 @@
             z-index: 15;
         }
 
-        .pickup-effect {
+        .pickup-effect, .score-effect {
             position: absolute;
-            color: #0f0;
             font-size: 24px;
             font-weight: bold;
             pointer-events: none;
@@ -202,17 +214,117 @@
             z-index: 100;
         }
 
+        .pickup-effect {
+            color: #0f0;
+        }
+
+        .score-effect {
+            color: #ff0;
+        }
+
         @keyframes float-up {
             0% { opacity: 1; transform: translateY(0); }
             100% { opacity: 0; transform: translateY(-50px); }
+        }
+
+        .particle {
+            position: absolute;
+            pointer-events: none;
+            z-index: 50;
+            background: #f00;
+            border-radius: 50%;
+            width: 4px;
+            height: 4px;
+            opacity: 1;
+        }
+
+        #settings-toggle {
+            position: absolute;
+            top: 10px;
+            right: 170px;
+            background: rgba(0,0,0,0.7);
+            color: #fff;
+            border: 2px solid #f00;
+            padding: 5px 10px;
+            cursor: pointer;
+            z-index: 20;
+        }
+
+        .settings-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            width: 80%;
+            max-width: 500px;
+        }
+
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+
+        .setting-row label {
+            min-width: 150px;
+        }
+
+        .setting-row input {
+            width: 150px;
+        }
+
+        #fov-display {
+            color: #0f0;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .screen-vignette {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.8) 100%);
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .enemy-sprite {
+            position: absolute;
+            width: 32px;
+            height: 32px;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><rect x="8" y="4" width="16" height="24" fill="%23f00"/><circle cx="16" cy="10" r="6" fill="%23000"/><rect x="12" y="20" width="8" height="4" fill="%23000"/></svg>') no-repeat center;
+            image-rendering: pixelated;
+            transform: translate(-50%, -50%);
+            z-index: 3;
+        }
+
+        .torch-light {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(circle, rgba(255,100,0,0.3) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 2;
+            opacity: 0.7;
+            animation: flicker 0.1s infinite alternate;
+        }
+
+        @keyframes flicker {
+            0% { opacity: 0.6; transform: scale(0.95); }
+            100% { opacity: 0.8; transform: scale(1.05); }
         }
     </style>
 </head>
 <body>
     <div id="game-container">
+        <div class="screen-vignette"></div>
         <canvas id="game-canvas"></canvas>
         
-        <div class="level-indicator">Уровень: <span id="level-counter">1</span></div>
+        <div class="level-indicator">Уровень: <span id="level-counter">1</span> | Очки: <span id="score">0</span> | Уровень оружия: <span id="weapon-level">1</span></div>
         
         <div id="ui">
             <div id="hud">
@@ -228,10 +340,12 @@
             <p>WASD — движение | ← → — поворот</p>
             <p>Пробел или клик — выстрел</p>
             <p>M — карта | R — перезапуск уровня</p>
-            <p>Найдите выход (зелёная дверь)!</p>
+            <p>O — настройки</p>
         </div>
         
         <canvas id="map"></canvas>
+
+        <button id="settings-toggle">⚙️ Настройки</button>
 
         <div class="mobile-controls">
             <div class="dpad">
@@ -250,6 +364,8 @@
         <div id="victory-screen">
             <h2>ПОБЕДА!</h2>
             <div>Вы прошли уровень <span id="completed-level">1</span>!</div>
+            <div>Очки за уровень: <span id="level-score">0</span></div>
+            <div>Всего очков: <span id="total-score">0</span></div>
             <div>Время: <span id="final-time">00:00</span></div>
             <div>Шагов: <span id="final-steps">0</span></div>
             <div class="records" id="best-records"></div>
@@ -262,9 +378,54 @@
         <div id="game-over-screen">
             <h2>ВЫ ПОГИБЛИ</h2>
             <div>Враги оказались сильнее...</div>
+            <div>Всего очков: <span id="death-score">0</span></div>
             <div>Время: <span id="death-time">00:00</span></div>
             <div>Шагов: <span id="death-steps">0</span></div>
             <button id="retry-btn">Попробовать снова</button>
+        </div>
+
+        <div id="settings-screen">
+            <h2>НАСТРОЙКИ</h2>
+            <div class="settings-panel">
+                <div class="setting-row">
+                    <label for="volume-slider">Громкость звука:</label>
+                    <input type="range" id="volume-slider" min="0" max="1" step="0.1" value="0.5">
+                    <span id="volume-display">50%</span>
+                </div>
+                <div class="setting-row">
+                    <label for="fov-slider">Угол обзора:</label>
+                    <input type="range" id="fov-slider" min="45" max="120" step="5" value="60">
+                    <span id="fov-display">60°</span>
+                </div>
+                <div class="setting-row">
+                    <label>Управление движением:</label>
+                    <select id="move-key-w">
+                        <option value="w">W</option>
+                        <option value="i">I</option>
+                        <option value="ArrowUp">↑</option>
+                    </select>
+                    <select id="move-key-s">
+                        <option value="s">S</option>
+                        <option value="k">K</option>
+                        <option value="ArrowDown">↓</option>
+                    </select>
+                </div>
+                <div class="setting-row">
+                    <label>Управление поворотом:</label>
+                    <select id="turn-key-left">
+                        <option value="ArrowLeft">←</option>
+                        <option value="a">A</option>
+                        <option value="q">Q</option>
+                    </select>
+                    <select id="turn-key-right">
+                        <option value="ArrowRight">→</option>
+                        <option value="d">D</option>
+                        <option value="e">E</option>
+                    </select>
+                </div>
+            </div>
+            <button id="save-settings-btn">Сохранить</button>
+            <button id="close-settings-btn">Закрыть</button>
         </div>
     </div>
 
@@ -282,8 +443,11 @@
         const timerEl = document.getElementById('timer');
         const stepsEl = document.getElementById('steps');
         const levelCounterEl = document.getElementById('level-counter');
+        const scoreEl = document.getElementById('score');
+        const weaponLevelEl = document.getElementById('weapon-level');
         const victoryScreen = document.getElementById('victory-screen');
         const gameOverScreen = document.getElementById('game-over-screen');
+        const settingsScreen = document.getElementById('settings-screen');
         const finalTimeEl = document.getElementById('final-time');
         const finalStepsEl = document.getElementById('final-steps');
         const deathTimeEl = document.getElementById('death-time');
@@ -293,6 +457,17 @@
         const nextLevelBtn = document.getElementById('next-level-btn');
         const restartGameBtn = document.getElementById('restart-game-btn');
         const retryBtn = document.getElementById('retry-btn');
+        const settingsToggle = document.getElementById('settings-toggle');
+        const saveSettingsBtn = document.getElementById('save-settings-btn');
+        const closeSettingsBtn = document.getElementById('close-settings-btn');
+        const volumeSlider = document.getElementById('volume-slider');
+        const volumeDisplay = document.getElementById('volume-display');
+        const fovSlider = document.getElementById('fov-slider');
+        const fovDisplay = document.getElementById('fov-display');
+        const moveKeyW = document.getElementById('move-key-w');
+        const moveKeyS = document.getElementById('move-key-s');
+        const turnKeyLeft = document.getElementById('turn-key-left');
+        const turnKeyRight = document.getElementById('turn-key-right');
 
         canvas.width = 800;
         canvas.height = 600;
@@ -301,6 +476,24 @@
 
         const mapSize = 16;
         const tileSize = 64;
+
+        // Настройки из localStorage или по умолчанию
+        let settings = JSON.parse(localStorage.getItem('doomLabSettings')) || {
+            volume: 0.5,
+            fov: 60,
+            moveKeys: { w: 'w', s: 's' },
+            turnKeys: { left: 'ArrowLeft', right: 'ArrowRight' }
+        };
+
+        // Применяем настройки
+        volumeSlider.value = settings.volume;
+        volumeDisplay.textContent = Math.round(settings.volume * 100) + '%';
+        fovSlider.value = settings.fov;
+        fovDisplay.textContent = settings.fov + '°';
+        moveKeyW.value = settings.moveKeys.w;
+        moveKeyS.value = settings.moveKeys.s;
+        turnKeyLeft.value = settings.turnKeys.left;
+        turnKeyRight.value = settings.turnKeys.right;
 
         // Три уровня
         const levels = [
@@ -326,12 +519,16 @@
                 ],
                 startPos: { x: 1.5, y: 1.5 },
                 enemies: [
-                    { x: 4.5, y: 4.5, patrolPoints: [{x:4.5,y:4.5}, {x:8.5,y:4.5}], speed: 0.8, health: 30, damage: 10, state: 'patrol', currentIndex: 0 },
-                    { x: 12.5, y: 10.5, patrolPoints: [{x:12.5,y:10.5}, {x:12.5,y:6.5}], speed: 1, health: 30, damage: 10, state: 'patrol', currentIndex: 0 }
+                    { x: 4.5, y: 4.5, patrolPoints: [{x:4.5,y:4.5}, {x:8.5,y:4.5}], speed: 0.8, health: 30, damage: 10, state: 'patrol', currentIndex: 0, spriteFrame: 0 },
+                    { x: 12.5, y: 10.5, patrolPoints: [{x:12.5,y:10.5}, {x:12.5,y:6.5}], speed: 1, health: 30, damage: 10, state: 'patrol', currentIndex: 0, spriteFrame: 0 }
                 ],
                 pickups: [
                     { type: 'health', x: 3.5, y: 3.5, amount: 25 },
                     { type: 'ammo', x: 10.5, y: 3.5, amount: 20 }
+                ],
+                torches: [
+                    { x: 3.5, y: 5.5 },
+                    { x: 11.5, y: 8.5 }
                 ]
             },
             // Уровень 2
@@ -356,14 +553,19 @@
                 ],
                 startPos: { x: 1.5, y: 1.5 },
                 enemies: [
-                    { x: 5.5, y: 3.5, patrolPoints: [{x:5.5,y:3.5}, {x:10.5,y:3.5}, {x:10.5,y:8.5}], speed: 1.2, health: 40, damage: 15, state: 'patrol', currentIndex: 0 },
-                    { x: 13.5, y: 12.5, patrolPoints: [{x:13.5,y:12.5}, {x:8.5,y:12.5}, {x:8.5,y:10.5}], speed: 1.5, health: 40, damage: 15, state: 'patrol', currentIndex: 0 },
-                    { x: 3.5, y: 10.5, patrolPoints: [{x:3.5,y:10.5}, {x:6.5,y:10.5}], speed: 1, health: 40, damage: 15, state: 'patrol', currentIndex: 0 }
+                    { x: 5.5, y: 3.5, patrolPoints: [{x:5.5,y:3.5}, {x:10.5,y:3.5}, {x:10.5,y:8.5}], speed: 1.2, health: 40, damage: 15, state: 'patrol', currentIndex: 0, spriteFrame: 0 },
+                    { x: 13.5, y: 12.5, patrolPoints: [{x:13.5,y:12.5}, {x:8.5,y:12.5}, {x:8.5,y:10.5}], speed: 1.5, health: 40, damage: 15, state: 'patrol', currentIndex: 0, spriteFrame: 0 },
+                    { x: 3.5, y: 10.5, patrolPoints: [{x:3.5,y:10.5}, {x:6.5,y:10.5}], speed: 1, health: 40, damage: 15, state: 'patrol', currentIndex: 0, spriteFrame: 0 }
                 ],
                 pickups: [
                     { type: 'health', x: 4.5, y: 5.5, amount: 25 },
                     { type: 'ammo', x: 12.5, y: 4.5, amount: 30 },
                     { type: 'health', x: 9.5, y: 11.5, amount: 25 }
+                ],
+                torches: [
+                    { x: 5.5, y: 4.5 },
+                    { x: 9.5, y: 6.5 },
+                    { x: 4.5, y: 11.5 }
                 ]
             },
             // Уровень 3 (финальный)
@@ -386,24 +588,30 @@
                     [1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1],
                     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
                 ],
-                startPos: { x: 14.5, y: 1.5 }, // Начинаем у выхода предыдущего уровня
+                startPos: { x: 14.5, y: 1.5 },
                 enemies: [
-                    { x: 3.5, y: 3.5, patrolPoints: [{x:3.5,y:3.5}, {x:12.5,y:3.5}, {x:12.5,y:12.5}, {x:3.5,y:12.5}], speed: 1.5, health: 50, damage: 20, state: 'patrol', currentIndex: 0 },
-                    { x: 7.5, y: 7.5, patrolPoints: [{x:7.5,y:7.5}, {x:9.5,y:7.5}, {x:9.5,y:9.5}, {x:7.5,y:9.5}], speed: 1.8, health: 50, damage: 20, state: 'patrol', currentIndex: 0 },
-                    { x: 2.5, y: 13.5, patrolPoints: [{x:2.5,y:13.5}, {x:5.5,y:13.5}, {x:5.5,y:11.5}], speed: 1.3, health: 50, damage: 20, state: 'patrol', currentIndex: 0 },
-                    { x: 13.5, y: 2.5, patrolPoints: [{x:13.5,y:2.5}, {x:10.5,y:2.5}, {x:10.5,y:5.5}], speed: 1.6, health: 50, damage: 20, state: 'patrol', currentIndex: 0 }
+                    { x: 3.5, y: 3.5, patrolPoints: [{x:3.5,y:3.5}, {x:12.5,y:3.5}, {x:12.5,y:12.5}, {x:3.5,y:12.5}], speed: 1.5, health: 50, damage: 20, state: 'patrol', currentIndex: 0, spriteFrame: 0 },
+                    { x: 7.5, y: 7.5, patrolPoints: [{x:7.5,y:7.5}, {x:9.5,y:7.5}, {x:9.5,y:9.5}, {x:7.5,y:9.5}], speed: 1.8, health: 50, damage: 20, state: 'patrol', currentIndex: 0, spriteFrame: 0 },
+                    { x: 2.5, y: 13.5, patrolPoints: [{x:2.5,y:13.5}, {x:5.5,y:13.5}, {x:5.5,y:11.5}], speed: 1.3, health: 50, damage: 20, state: 'patrol', currentIndex: 0, spriteFrame: 0 },
+                    { x: 13.5, y: 2.5, patrolPoints: [{x:13.5,y:2.5}, {x:10.5,y:2.5}, {x:10.5,y:5.5}], speed: 1.6, health: 50, damage: 20, state: 'patrol', currentIndex: 0, spriteFrame: 0 }
                 ],
                 pickups: [
                     { type: 'health', x: 2.5, y: 2.5, amount: 30 },
                     { type: 'ammo', x: 13.5, y: 13.5, amount: 40 },
                     { type: 'health', x: 8.5, y: 4.5, amount: 30 },
                     { type: 'ammo', x: 4.5, y: 12.5, amount: 30 }
+                ],
+                torches: [
+                    { x: 3.5, y: 4.5 },
+                    { x: 12.5, y: 4.5 },
+                    { x: 4.5, y: 12.5 },
+                    { x: 12.5, y: 12.5 }
                 ]
             }
         ];
 
         let currentLevel = 0;
-        let map, enemies, pickups;
+        let map, enemies, pickups, torches;
         let playerX, playerY, playerAngle = 0;
         let playerSpeed = 3;
         let rotationSpeed = 0.05;
@@ -414,14 +622,21 @@
         let gameRunning = true;
         let startTime = Date.now();
         let currentTime = 0;
+        let score = 0;
+        let levelScore = 0;
+        let weaponLevel = 1;
+        let particles = [];
+        let enemySprites = []; // Для 3D рендеринга
 
-        // Анимация оружия
-        let weaponRecoil = 0;
+        // Управление (динамическое)
+        let moveKeys = settings.moveKeys;
+        let turnKeys = settings.turnKeys;
 
         // Аудио контекст
         let audioContext;
         let backgroundOscillator;
         let isMusicPlaying = false;
+        let volume = settings.volume;
 
         try {
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -431,23 +646,33 @@
 
         // Рекорды
         let records = JSON.parse(localStorage.getItem('doomLabRecords')) || {
-            level1: { time: Infinity, steps: Infinity },
-            level2: { time: Infinity, steps: Infinity },
-            level3: { time: Infinity, steps: Infinity }
+            level1: { time: Infinity, steps: Infinity, score: 0 },
+            level2: { time: Infinity, steps: Infinity, score: 0 },
+            level3: { time: Infinity, steps: Infinity, score: 0 }
         };
+
+        // Прогресс игры
+        let gameProgress = JSON.parse(localStorage.getItem('doomLabProgress')) || {
+            currentLevel: 0,
+            score: 0,
+            weaponLevel: 1
+        };
+
+        // FOV
+        let fov = (settings.fov * Math.PI) / 180;
 
         // ======================
         // ЗВУКИ
         // ======================
-        function playSound(frequency, duration, type = 'sine', volume = 0.1) {
-            if (!audioContext) return;
+        function playSound(frequency, duration, type = 'sine', vol = 0.1) {
+            if (!audioContext || volume <= 0) return;
             const oscillator = audioContext.createOscillator();
             const gainNode = audioContext.createGain();
             oscillator.connect(gainNode);
             gainNode.connect(audioContext.destination);
             oscillator.frequency.value = frequency;
             oscillator.type = type;
-            gainNode.gain.value = volume;
+            gainNode.gain.value = vol * volume;
             oscillator.start();
             setTimeout(() => {
                 oscillator.stop();
@@ -461,7 +686,10 @@
         function playShot() {
             playSound(300, 50, 'sawtooth', 0.2);
             playSound(100, 150, 'square', 0.1);
-            weaponRecoil = 10;
+            weaponEl.classList.add('weapon-recoil');
+            setTimeout(() => {
+                weaponEl.classList.remove('weapon-recoil');
+            }, 300);
         }
 
         function playPickup() {
@@ -487,6 +715,12 @@
             setTimeout(() => playSound(700, 300, 'sine', 0.1), 500);
         }
 
+        function playUpgrade() {
+            playSound(800, 100, 'sine', 0.1);
+            playSound(1000, 100, 'sine', 0.1);
+            playSound(1200, 100, 'sine', 0.1);
+        }
+
         function startBackgroundMusic() {
             if (!audioContext || isMusicPlaying) return;
             isMusicPlaying = true;
@@ -497,7 +731,7 @@
                 osc.connect(gain);
                 gain.connect(audioContext.destination);
                 osc.frequency.value = freq;
-                gain.gain.value = 0.05;
+                gain.gain.value = 0.05 * volume;
                 osc.start();
                 setTimeout(() => {
                     osc.stop();
@@ -568,15 +802,27 @@
         // ======================
         // УПРАВЛЕНИЕ
         // ======================
-        const keys = {
-            w: false,
-            a: false,
-            s: false,
-            d: false,
-            ArrowLeft: false,
-            ArrowRight: false,
-            ' ': false
-        };
+        const keys = {};
+
+        function updateKeyBindings() {
+            // Сбросим все
+            for (let key in keys) {
+                keys[key] = false;
+            }
+            // Установим новые
+            keys[moveKeys.w] = false;
+            keys[moveKeys.s] = false;
+            keys['a'] = false; // Всегда A/D для бокового движения
+            keys['d'] = false;
+            keys[turnKeys.left] = false;
+            keys[turnKeys.right] = false;
+            keys[' '] = false;
+            keys['m'] = false;
+            keys['r'] = false;
+            keys['o'] = false;
+        }
+
+        updateKeyBindings();
 
         window.addEventListener('keydown', (e) => {
             if (keys.hasOwnProperty(e.key)) {
@@ -584,6 +830,9 @@
             }
             if (e.key === 'r' || e.key === 'R') {
                 restartLevel();
+            }
+            if (e.key === 'o' || e.key === 'O') {
+                toggleSettings();
             }
         });
 
@@ -602,28 +851,81 @@
         });
 
         // Мобильное управление
-        document.getElementById('btn-w')?.addEventListener('touchstart', () => keys.w = true);
-        document.getElementById('btn-w')?.addEventListener('touchend', () => keys.w = false);
-        document.getElementById('btn-s')?.addEventListener('touchstart', () => keys.s = true);
-        document.getElementById('btn-s')?.addEventListener('touchend', () => keys.s = false);
+        document.getElementById('btn-w')?.addEventListener('touchstart', () => keys[moveKeys.w] = true);
+        document.getElementById('btn-w')?.addEventListener('touchend', () => keys[moveKeys.w] = false);
+        document.getElementById('btn-s')?.addEventListener('touchstart', () => keys[moveKeys.s] = true);
+        document.getElementById('btn-s')?.addEventListener('touchend', () => keys[moveKeys.s] = false);
         document.getElementById('btn-a')?.addEventListener('touchstart', () => keys.a = true);
         document.getElementById('btn-a')?.addEventListener('touchend', () => keys.a = false);
         document.getElementById('btn-d')?.addEventListener('touchstart', () => keys.d = true);
         document.getElementById('btn-d')?.addEventListener('touchend', () => keys.d = false);
-        document.getElementById('btn-left')?.addEventListener('touchstart', () => keys.ArrowLeft = true);
-        document.getElementById('btn-left')?.addEventListener('touchend', () => keys.ArrowLeft = false);
-        document.getElementById('btn-right')?.addEventListener('touchstart', () => keys.ArrowRight = true);
-        document.getElementById('btn-right')?.addEventListener('touchend', () => keys.ArrowRight = false);
+        document.getElementById('btn-left')?.addEventListener('touchstart', () => keys[turnKeys.left] = true);
+        document.getElementById('btn-left')?.addEventListener('touchend', () => keys[turnKeys.left] = false);
+        document.getElementById('btn-right')?.addEventListener('touchstart', () => keys[turnKeys.right] = true);
+        document.getElementById('btn-right')?.addEventListener('touchend', () => keys[turnKeys.right] = false);
         document.getElementById('btn-fire')?.addEventListener('click', fireWeapon);
+
+        // ======================
+        // ЧАСТИЦЫ
+        // ======================
+        function createParticle(x, y, color = '#f00') {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.style.left = `${x}px`;
+            particle.style.top = `${y}px`;
+            particle.style.background = color;
+            document.body.appendChild(particle);
+            
+            const vx = (Math.random() - 0.5) * 5;
+            const vy = (Math.random() - 0.5) * 5;
+            const life = 1000 + Math.random() * 1000;
+            const start = Date.now();
+            
+            particles.push({
+                element: particle,
+                x: x,
+                y: y,
+                vx: vx,
+                vy: vy,
+                life: life,
+                start: start
+            });
+        }
+
+        function updateParticles() {
+            const now = Date.now();
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                const age = now - p.start;
+                if (age > p.life) {
+                    p.element.remove();
+                    particles.splice(i, 1);
+                } else {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vy += 0.05; // гравитация
+                    p.element.style.left = `${p.x}px`;
+                    p.element.style.top = `${p.y}px`;
+                    p.element.style.opacity = 1 - age / p.life;
+                }
+            }
+        }
 
         // ======================
         // ИГРОВАЯ ЛОГИКА
         // ======================
         function initLevel(levelIndex) {
+            // Загружаем прогресс, если начинаем сначала
+            if (levelIndex === 0) {
+                score = gameProgress.score;
+                weaponLevel = gameProgress.weaponLevel;
+            }
+            
             const level = levels[levelIndex];
-            map = JSON.parse(JSON.stringify(level.map)); // Глубокое копирование
+            map = JSON.parse(JSON.stringify(level.map));
             enemies = JSON.parse(JSON.stringify(level.enemies));
             pickups = JSON.parse(JSON.stringify(level.pickups));
+            torches = JSON.parse(JSON.stringify(level.torches || []));
             
             playerX = level.startPos.x * tileSize;
             playerY = level.startPos.y * tileSize;
@@ -635,10 +937,45 @@
             ammo = 50;
             startTime = Date.now();
             gameRunning = true;
+            levelScore = 0;
             levelCounterEl.textContent = levelIndex + 1;
+            scoreEl.textContent = score;
+            weaponLevelEl.textContent = weaponLevel;
+            
+            // Создаем спрайты факелов
+            createTorchLights();
             
             updateHUD();
             startBackgroundMusic();
+        }
+
+        function createTorchLights() {
+            // Удаляем старые
+            document.querySelectorAll('.torch-light').forEach(el => el.remove());
+            
+            // Создаем новые
+            torches.forEach(torch => {
+                const light = document.createElement('div');
+                light.className = 'torch-light';
+                light.style.left = `${torch.x * tileSize - 50}px`;
+                light.style.top = `${torch.y * tileSize - 50}px`;
+                document.getElementById('game-container').appendChild(light);
+            });
+        }
+
+        function addScore(points) {
+            levelScore += points;
+            score += points;
+            scoreEl.textContent = score;
+            
+            // Проверка на улучшение оружия
+            const newWeaponLevel = Math.floor(score / 100) + 1;
+            if (newWeaponLevel > weaponLevel) {
+                weaponLevel = newWeaponLevel;
+                weaponLevelEl.textContent = weaponLevel;
+                showPickupEffect(`УРОВЕНЬ ОРУЖИЯ ${weaponLevel}!`, 50, 100, '#ff0', 'score-effect');
+                playUpgrade();
+            }
         }
 
         function fireWeapon() {
@@ -646,7 +983,13 @@
             ammo--;
             updateHUD();
             playShot();
-            showBloodSplash();
+            
+            // Частицы выстрела
+            for (let i = 0; i < 5; i++) {
+                const x = canvas.width / 2 + (Math.random() - 0.5) * 20;
+                const y = canvas.height / 2 + (Math.random() - 0.5) * 20;
+                createParticle(x, y, '#ff0');
+            }
             
             // Проверка попадания по врагам
             for (let i = 0; i < enemies.length; i++) {
@@ -655,34 +998,34 @@
                 const dy = enemy.y * tileSize - playerY;
                 const distance = Math.sqrt(dx*dx + dy*dy);
                 
-                // Упрощённая проверка попадания (в пределах 30 градусов и 300 пикселей)
+                // Упрощённая проверка попадания
                 const angleToEnemy = Math.atan2(dy, dx);
                 const angleDiff = Math.abs(angleToEnemy - playerAngle);
                 const adjustedDiff = Math.min(angleDiff, 2*Math.PI - angleDiff);
                 
-                if (distance < 300 && adjustedDiff < 0.26) { // ~15 градусов
-                    enemy.health -= 25;
+                if (distance < 300 && adjustedDiff < 0.26) {
+                    const damage = 25 * weaponLevel; // Урон зависит от уровня оружия
+                    enemy.health -= damage;
                     playEnemyHurt();
+                    
+                    // Частицы крови
+                    for (let j = 0; j < 3; j++) {
+                        createParticle(
+                            canvas.width / 2 + (i % 3 - 1) * 30, 
+                            canvas.height / 2 + Math.random() * 50, 
+                            '#f00'
+                        );
+                    }
+                    
                     if (enemy.health <= 0) {
                         playEnemyDie();
+                        addScore(50); // Очки за убийство
+                        showPickupEffect("+50", 50, 100, '#ff0', 'score-effect');
                         enemies.splice(i, 1);
                         i--;
                     }
                 }
             }
-        }
-
-        function showBloodSplash() {
-            weaponEl.style.transform = `translateY(${weaponRecoil}px)`;
-            setTimeout(() => {
-                weaponRecoil *= 0.7;
-                if (Math.abs(weaponRecoil) > 0.1) {
-                    weaponEl.style.transform = `translateY(${weaponRecoil}px)`;
-                    requestAnimationFrame(showBloodSplash);
-                } else {
-                    weaponEl.style.transform = '';
-                }
-            }, 30);
         }
 
         function checkCollision(x, y) {
@@ -709,13 +1052,15 @@
                 const dy = pickup.y * tileSize - playerY;
                 const distance = Math.sqrt(dx*dx + dy*dy);
                 
-                if (distance < 40) { // Радиус подбора
+                if (distance < 40) {
                     if (pickup.type === 'health') {
                         health = Math.min(100, health + pickup.amount);
                         showPickupEffect(`+${pickup.amount} ❤️`);
+                        addScore(10);
                     } else if (pickup.type === 'ammo') {
                         ammo += pickup.amount;
                         showPickupEffect(`+${pickup.amount} 🔫`);
+                        addScore(20);
                     }
                     playPickup();
                     pickups.splice(i, 1);
@@ -725,12 +1070,13 @@
             }
         }
 
-        function showPickupEffect(text) {
+        function showPickupEffect(text, x = 50, y = 100, color = '#0f0', className = 'pickup-effect') {
             const effect = document.createElement('div');
-            effect.className = 'pickup-effect';
+            effect.className = className;
             effect.textContent = text;
-            effect.style.left = `${Math.random() * 60 + 20}%`;
-            effect.style.top = '70%';
+            effect.style.left = `${x}%`;
+            effect.style.top = `${y}%`;
+            effect.style.color = color;
             document.getElementById('game-container').appendChild(effect);
             
             setTimeout(() => {
@@ -741,7 +1087,14 @@
         }
 
         function updateEnemies() {
+            // Удаляем старые спрайты
+            document.querySelectorAll('.enemy-sprite').forEach(el => el.remove());
+            enemySprites = [];
+            
             for (let enemy of enemies) {
+                // Анимация спрайта
+                enemy.spriteFrame = (enemy.spriteFrame + 0.1) % 4;
+                
                 // Расстояние до игрока
                 const dx = playerX - enemy.x * tileSize;
                 const dy = playerY - enemy.y * tileSize;
@@ -761,7 +1114,7 @@
                     const newX = enemy.x + Math.cos(angle) * enemy.speed * 0.05;
                     const newY = enemy.y + Math.sin(angle) * enemy.speed * 0.05;
                     
-                    // Проверка столкновений (упрощённая)
+                    // Проверка столкновений
                     if (!checkEnemyCollision(newX, newY)) {
                         enemy.x = newX;
                         enemy.y = newY;
@@ -769,7 +1122,7 @@
                     
                     // Атака, если рядом
                     if (distance < 50) {
-                        health -= enemy.damage * 0.05; // Урон со временем
+                        health -= enemy.damage * 0.05;
                         if (health <= 0) {
                             gameOver();
                         }
@@ -795,6 +1148,14 @@
                         }
                     }
                 }
+                
+                // Создаем спрайт для 3D рендеринга (будет в raycasting)
+                enemySprites.push({
+                    x: enemy.x * tileSize,
+                    y: enemy.y * tileSize,
+                    distance: distance,
+                    frame: Math.floor(enemy.spriteFrame)
+                });
             }
         }
 
@@ -813,20 +1174,20 @@
             if (!gameRunning) return;
 
             // Поворот
-            if (keys.ArrowLeft) playerAngle -= rotationSpeed;
-            if (keys.ArrowRight) playerAngle += rotationSpeed;
+            if (keys[turnKeys.left]) playerAngle -= rotationSpeed;
+            if (keys[turnKeys.right]) playerAngle += rotationSpeed;
 
             // Движение
             let moveX = 0;
             let moveY = 0;
             let moved = false;
 
-            if (keys.w) {
+            if (keys[moveKeys.w]) {
                 moveX += Math.cos(playerAngle) * playerSpeed;
                 moveY += Math.sin(playerAngle) * playerSpeed;
                 moved = true;
             }
-            if (keys.s) {
+            if (keys[moveKeys.s]) {
                 moveX -= Math.cos(playerAngle) * playerSpeed;
                 moveY -= Math.sin(playerAngle) * playerSpeed;
                 moved = true;
@@ -874,6 +1235,7 @@
             }
 
             updateHUD();
+            updateParticles();
         }
 
         function updateHUD() {
@@ -890,9 +1252,18 @@
             const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
             const seconds = (elapsed % 60).toString().padStart(2, '0');
             
+            // Бонус за быстрое прохождение
+            const timeBonus = Math.max(0, 100 - elapsed);
+            if (timeBonus > 0) {
+                addScore(timeBonus);
+                showPickupEffect(`+${timeBonus} за скорость!`, 50, 50, '#0ff', 'score-effect');
+            }
+            
             finalTimeEl.textContent = `${minutes}:${seconds}`;
             finalStepsEl.textContent = totalSteps;
             completedLevelEl.textContent = currentLevel + 1;
+            document.getElementById('level-score').textContent = levelScore;
+            document.getElementById('total-score').textContent = score;
             
             // Обновление рекордов
             const levelKey = `level${currentLevel + 1}`;
@@ -902,7 +1273,16 @@
             if (totalSteps < records[levelKey].steps) {
                 records[levelKey].steps = totalSteps;
             }
+            if (score > records[levelKey].score) {
+                records[levelKey].score = score;
+            }
             localStorage.setItem('doomLabRecords', JSON.stringify(records));
+            
+            // Сохраняем прогресс
+            gameProgress.currentLevel = (currentLevel + 1) % levels.length;
+            gameProgress.score = score;
+            gameProgress.weaponLevel = weaponLevel;
+            localStorage.setItem('doomLabProgress', JSON.stringify(gameProgress));
             
             // Отображение рекордов
             displayRecords();
@@ -919,7 +1299,8 @@
                 const timeStr = record.time === Infinity ? "--:--" : 
                     `${Math.floor(record.time / 60).toString().padStart(2, '0')}:${(record.time % 60).toString().padStart(2, '0')}`;
                 const stepsStr = record.steps === Infinity ? "---" : record.steps;
-                html += `<div>Уровень ${i + 1}: ${timeStr} | ${stepsStr} шагов</div>`;
+                const scoreStr = record.score || 0;
+                html += `<div>Уровень ${i + 1}: ${timeStr} | ${stepsStr} шагов | ${scoreStr} очков</div>`;
             }
             bestRecordsEl.innerHTML = html;
         }
@@ -934,6 +1315,7 @@
             
             deathTimeEl.textContent = `${minutes}:${seconds}`;
             deathStepsEl.textContent = totalSteps;
+            document.getElementById('death-score').textContent = score;
             
             gameOverScreen.style.display = 'flex';
         }
@@ -946,6 +1328,9 @@
 
         function restartGame() {
             currentLevel = 0;
+            score = 0;
+            weaponLevel = 1;
+            gameProgress = { currentLevel: 0, score: 0, weaponLevel: 1 };
             victoryScreen.style.display = 'none';
             initLevel(currentLevel);
         }
@@ -958,6 +1343,52 @@
             gameOverScreen.style.display = 'none';
             initLevel(currentLevel);
         }
+
+        function toggleSettings() {
+            if (settingsScreen.style.display === 'flex') {
+                settingsScreen.style.display = 'none';
+            } else {
+                settingsScreen.style.display = 'flex';
+            }
+        }
+
+        // ======================
+        // НАСТРОЙКИ
+        // ======================
+        volumeSlider.addEventListener('input', () => {
+            volume = parseFloat(volumeSlider.value);
+            volumeDisplay.textContent = Math.round(volume * 100) + '%';
+        });
+
+        fovSlider.addEventListener('input', () => {
+            fov = (parseInt(fovSlider.value) * Math.PI) / 180;
+            fovDisplay.textContent = fovSlider.value + '°';
+        });
+
+        saveSettingsBtn.addEventListener('click', () => {
+            settings = {
+                volume: volume,
+                fov: parseInt(fovSlider.value),
+                moveKeys: {
+                    w: moveKeyW.value,
+                    s: moveKeyS.value
+                },
+                turnKeys: {
+                    left: turnKeyLeft.value,
+                    right: turnKeyRight.value
+                }
+            };
+            localStorage.setItem('doomLabSettings', JSON.stringify(settings));
+            updateKeyBindings();
+            alert('Настройки сохранены!');
+            settingsScreen.style.display = 'none';
+        });
+
+        closeSettingsBtn.addEventListener('click', () => {
+            settingsScreen.style.display = 'none';
+        });
+
+        settingsToggle.addEventListener('click', toggleSettings);
 
         // ======================
         // РЕНДЕРИНГ
@@ -972,10 +1403,10 @@
             ctx.fillRect(0, canvas.height / 2, canvas.width, canvas.height / 2);
 
             // Raycasting
-            const fov = Math.PI / 3;
             const rayCount = canvas.width;
             const rayStep = fov / rayCount;
 
+            // Сначала стены
             for (let i = 0; i < rayCount; i++) {
                 const rayAngle = playerAngle - fov / 2 + i * rayStep;
                 let distance = 0;
@@ -1032,6 +1463,35 @@
                 ctx.globalAlpha = 1;
             }
 
+            // Спрайты врагов (упрощённый бин-сортированный рендеринг)
+            enemySprites.sort((a, b) => b.distance - a.distance); // дальние первыми
+            for (let sprite of enemySprites) {
+                const dx = sprite.x - playerX;
+                const dy = sprite.y - playerY;
+                const distance = Math.sqrt(dx*dx + dy*dy);
+                
+                // Угол между спрайтом и направлением взгляда
+                const angle = Math.atan2(dy, dx) - playerAngle;
+                const correctedAngle = angle - Math.floor(angle / (2*Math.PI) + 0.5) * 2*Math.PI;
+                
+                // Проверка видимости
+                if (Math.abs(correctedAngle) < fov / 2) {
+                    const spriteScreenX = canvas.width / 2 + (correctedAngle / (fov / 2)) * (canvas.width / 2);
+                    const spriteHeight = (tileSize / distance) * ((canvas.width / 2) / Math.tan(fov / 2));
+                    
+                    // Рисуем спрайт (заглушка — красный прямоугольник)
+                    ctx.fillStyle = '#f00';
+                    ctx.globalAlpha = 0.8;
+                    ctx.fillRect(
+                        spriteScreenX - spriteHeight / 4,
+                        canvas.height / 2 - spriteHeight / 2,
+                        spriteHeight / 2,
+                        spriteHeight
+                    );
+                    ctx.globalAlpha = 1;
+                }
+            }
+
             renderMinimap();
             updateTimer();
         }
@@ -1041,7 +1501,7 @@
             mapCtx.fillStyle = '#000';
             mapCtx.fillRect(0, 0, mapCanvas.width, mapCanvas.height);
 
-            // Стены, выход, предметы, враги
+            // Стены, выход
             for (let y = 0; y < mapSize; y++) {
                 for (let x = 0; x < mapSize; x++) {
                     if (map[y][x] === 1) {
@@ -1113,18 +1573,21 @@
         }
 
         // ======================
-        // ОБРАБОТЧИКИ КНОПОК
+        // ИНИЦИАЛИЗАЦИЯ
         // ======================
         nextLevelBtn.addEventListener('click', nextLevel);
         restartGameBtn.addEventListener('click', restartGame);
         retryBtn.addEventListener('click', retry);
 
-        // ======================
-        // ЗАПУСК ИГРЫ
-        // ======================
+        // Загружаем прогресс
+        currentLevel = gameProgress.currentLevel;
+        score = gameProgress.score;
+        weaponLevel = gameProgress.weaponLevel;
+
+        // Инициализируем первый уровень
         initLevel(currentLevel);
         gameLoop();
-        displayRecords(); // Показываем рекорды сразу
+        displayRecords();
     </script>
 </body>
 </html>
